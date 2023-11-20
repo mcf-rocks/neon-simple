@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.2/dist/web3.min.js"></script>
+<script>
+
+  const contractABI = [
+	{
+		"inputs": [],
+		"name": "incCounter",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "counter",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCounter",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+  ] 
+  const contractAddress = "0x9561d9B6FB6Cbba4aADc39b0820Fb43Ea61bf494"
+  var contract
+
+  var getState
+  getState = async() => {
+    setTimeout(getState,1000)
+    const callData = await contract.methods.getCounter().encodeABI()
+    ethereum
+      .request({
+        method: 'eth_call',
+        params: [
+          {
+            to: contractAddress,
+            data: callData,
+          },
+        ],
+      })
+      .then((counterValueHex) => {
+        const counterValue = window.web3.eth.abi.decodeParameter("uint256", counterValueHex)
+        document.getElementById("counter").innerHTML = "Current Counter Value: "+counterValue
+      }) 
+      .catch((error) => {
+        console.log("getCounter() failed -- " + error.message)
+      })
+    ethereum
+      .request({
+        method: 'eth_blockNumber',
+        params: [],
+      })
+      .then((blockHex) => {
+        const block = window.web3.utils.toDecimal(blockHex)
+        document.getElementById("block").innerHTML = "Current Neon Block Number: "+block
+      })
+      .catch((error) => {
+        console.log("eth_blockNumber failed -- " + error.message)
+      })
+  }
+
+  var accountAddress
+
+  async function getAccount() {
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' })
+      .catch((err) => {
+        if (err.code === 4001) {
+          // EIP-1193 userRejectedRequest error
+          // If this happens, the user rejected the connection request.
+          console.log('Please connect to MetaMask.')
+        } else {
+          console.error(err)
+        }
+      })
+    accountAddress = accounts[0]
+    document.getElementById("account").innerHTML = "Account: "+accountAddress
+    document.getElementById("inc").disabled = false 
+  }
+
+  window.addEventListener('load', function () {
+    document.getElementById("inc").disabled = true 
+    window.web3 = new Web3()
+    contract = new web3.eth.Contract(contractABI, contractAddress)
+    setTimeout(getState,100)
+  })
+
+  const doIncCounter = async () => {
+    const callData = await contract.methods.incCounter().encodeABI()
+    // Neon does not support EIP-1559 transactions....
+    // type: 0x0 is what make this a legacy transaction 
+    ethereum
+      .request({
+        method: 'eth_sendTransaction',
+        params: [
+          {
+            type: 0x0,
+            from: accountAddress, 
+            to: contractAddress,
+            value: 0,
+            data: callData,
+          },
+        ],
+      })
+      .then((txHash) => console.log(txHash))
+      .catch((error) => console.error(error))
+  }
+
+</script>
+</head>
+<body> 
+<strong>
+<div style="height: 10vh; background-color:#EEEEEE"></div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#FFDFD3;">
+  ~~~ SIMPLE ~~~
+</div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#957DAD;">
+  <div id="block">Current Neon Block Number: ???</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#D291BC">
+  <button id="connect" onclick="getAccount()">Connect MetaMask</button>
+</div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#FEC8D8">
+  <div id="account">Account: Connect MetaMask</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#D291BC">
+  <button id="inc" onclick="doIncCounter()">incCounter</button> 
+</div>
+<div style="display: flex; align-items: center; justify-content: center; height: 10vh; background-color:#FFDFD3">
+  <div id="counter">Current Counter Value: ???</div>
+</div>
+<div style="height: 20vh; background-color:#EEEEEE"></div>
+</strong>
+</html>
+
+
